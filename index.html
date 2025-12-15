@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>I2T</title>
+	<script src="script.js" defer></script>
+	<link href="style.css" rel="stylesheet">
+</head>
+<body>
+	<div class="panel">
+		<div class="toolbar">
+			<!-- First toolbar row -->
+			<div class="toolbar-row">
+				<!-- Image loader -->
+				<div class="control">
+					<input id="Load" type="file" accept="image/*">
+				</div>
+
+				<!-- Font controls -->
+				<div class="control">
+					<span id="FontDisplay">Font:</span>
+					<input id="FontSize" type="number" min="1" max="32" value="10">
+					<span id="FontPxDisplay">px</span>
+					<input id="Font" type="text" value="monospace">
+				</div>
+
+				<!-- Result sizes -->
+				<div class="control">
+					<label for="ResultHeight">Result size (chars):</label>
+					<input id="ResultHeight" type="number" min="10" max="200" value="40">
+					<label for="ResultWidth">by</label>
+					<input id="ResultWidth" type="number" min="10" max="200" value="60">
+				</div>
+
+				<!-- Charset -->
+				<div class="control">
+					<button id="CharsetBtn">Edit Charset</button>
+				</div>
+				<!-- Floating textarea container -->
+				<div id="CharsetOverlay">
+					<div class="overlay-content">
+						<textarea id="CharsetBox" rows="6" cols="40"></textarea>
+						<div class="overlay-actions">
+							<button id="CharsetSave">Save</button>
+							<button id="CharsetClose">Close</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Second toolbar row -->
+			<div class="toolbar-row">
+				<!-- Contrast controls -->
+				<div class="control">
+					<span id="ContrastCharsetLabel">Charset Contrast:</span>
+					<input id="ContrastCharset" type="range" min="0" max="2" step="0.1" value="1">
+					<span id="ContrastCharsetVal">1.0</span>
+				</div>
+				<div class="control">
+					<span id="ContrastImgLabel">Image Contrast:</span>
+					<input id="ContrastImg" type="range" min="0" max="2" step="0.1" value="1">
+					<span id="ContrastImgVal">1.0</span>
+				</div>
+
+				<!-- Opacity controls -->
+				<div class="control">
+					<span id="OpacityCharsetLabel">Charset Opacity:</span>
+					<input id="OpacityCharset" type="range" min="0" max="1" step="0.1" value="1">
+					<span id="OpacityCharsetVal">1.0</span>
+				</div>
+				<div class="control">
+					<span id="OpacityImgLabel">Image Opacity:</span>
+					<input id="OpacityImg" type="range" min="0" max="1" step="0.1" value="1">
+					<span id="OpacityImgVal">1.0</span>
+				</div>
+
+				<!-- Text and Image toggles -->
+				<div class="control">
+					<input id="SwitchTextOutput" type="checkbox" checked>
+					<label for="SwitchTextOutput">Show Text Output</label>
+				</div>
+				<div class="control">
+					<input id="SwitchProcessedImg" type="checkbox" checked>
+					<label for="SwitchProcessedImg">Show Processed Image</label>
+				</div>
+
+				<!-- Copy result -->
+				<button id="CopyResult">Copy Result</button>
+			</div>
+		</div>
+	</div>
+	<canvas class="canv"></canvas>
+</body>
+</html>

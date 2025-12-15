@@ -1,0 +1,105 @@
+body {
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-start;
+	height: 100vh;
+	background: #f0f0f0;
+}
+
+.canv {
+	align-self: center;
+	border: 4px solid transparent;
+	border-radius: 12px;
+	box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+	background: linear-gradient(#fff, #fff) padding-box, linear-gradient(135deg, #6a5acd, #20b2aa) border-box;
+}
+
+
+.toolbar {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-bottom: 16px;
+	background: #f0f0f0;
+}
+
+.toolbar-row {
+	display: flex;
+	gap: 12px;
+}
+
+.control {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 6px;
+	min-width: 150px;
+	height: 20px;
+	padding: 4px 8px;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	background: #fff;
+}
+
+.control input[type="range"] {
+	display: none;
+}
+
+.control:hover span[id$="Label"] {
+	display: none;
+}
+
+.control:hover input[type="range"] {
+	display: inline-block;
+}
+
+.control:hover {
+	border-color: #88a;
+	background: #eef;
+}
+
+
+#Font {
+	width: 80px;
+}
+
+#FontSize,
+#ResultHeight,
+#ResultWidth {
+	width: 40px;
+}
+
+.overlay-content {
+	background: #fff;
+	border: 2px solid #444;
+	border-radius: 6px;
+	padding: 12px;
+	max-width: 500px;
+	margin: auto;
+	position: relative;
+	top: 50%;
+	transform: translateY(-50%);
+	box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.overlay-actions {
+	display: flex;
+	justify-content: center;
+	gap: 16px;
+}
+
+#CharsetOverlay {
+	display: none;
+	position: fixed;
+	inset: 0;
+	background: rgba(0,0,0,0.3);
+	backdrop-filter: blur(4px);
+	z-index: 1000;
+}
+
+#CharsetBox {
+	width: 100%;
+	min-height: 120px;
+	resize: vertical;
+}
