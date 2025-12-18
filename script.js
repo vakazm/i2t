@@ -31,8 +31,11 @@ let chars;
 let ih, iw;
 let img;
 let processed;
+let subsampled;
 
 // Rendering and display settings
+let lod;
+let sh, sw;
 let cont_charset, cont_img;
 let opacity_charset, opacity_img;
 let switch_text_output, switch_processed_img;
@@ -68,62 +71,147 @@ function resizei() {
 }
 
 // Set font
-function setFont(_font, _size, redraw = true) {
+function setFont(_font, _size, rebuild = true) {
 	h = clamp(_size, 1, 32);
 	font = _font;
 	charctx.font = h + 'px ' + font;
 	charctx.textBaseline = 'top';
 	w = Math.ceil(charctx.measureText('.').width);
 	resizei();
-	if (redraw) { preprocessCharset(); preprocessImage(); process(); }
+	if (rebuild) { preprocessCharset(); preprocessImage(); process(); }
 }
 
 // Setting up charset
-function setCharset(_charset, redraw = true) {
+function setCharset(_charset, rebuild = true) {
 	charstr = [...new Set(_charset)].join('');
 	if (_charset == '') { chars =  Array(95).fill().map((e, i) => ({c: String.fromCharCode(32 + i) })); }
 	else { chars = charstr.split('').map(e => ({c: e})); }
-	if (redraw) { preprocessCharset(); preprocessImage(); process(); }
+	if (rebuild) { preprocessCharset(); preprocessImage(); process(); }
 }
 
 // Set result width and height
-function setResultSizes(_ch, _cw, redraw = true) {
+function setResultSizes(_ch, _cw, rebuild = true) {
 	ch = clamp(_ch, 1, 1000); cw = clamp(_cw, 1, 1000);
 	res = Array.from({length: ch}, () => Array.from({length: cw}, () => 0));
 	resizei();
-	if (redraw) { preprocessImage(); process(); }
+	if (rebuild) { preprocessImage(); process(); }
 }
 
 // Setting contrast
 function setContCharset(_cont) { cont_charset = clamp(_cont, -10, 10); preprocessCharset(); process(); }
 function setContImg(_cont) { cont_img = clamp(_cont, -10, 10); preprocessImage(); process(); }
 
+// Update level of details
+function setLoD(_lod, rebuild = true) {
+	lod = clamp(_lod, 0, 1);
+	if (lod === 0) { sh = 1; sw = 1; }
+	//else if (lod === 1) { sh = h; sw = w; }
+	else { sh = Math.ceil(h * lod); sw = Math.ceil(w * lod); }
+	if (rebuild) { buildCharsetMap(); buildImageSubsamples(); process(); }
+}
+
+
+// Image subsampling
+function subsample(pixels) {
+	const scaley = h / sh, scalex = w / sw;
+	const result = Array.from({length: sh}, () => Array.from({length: sw}, () => 0));
+	if (lod === 0) { result[0][0] = pixels.flat().reduce((acc, e) => e + acc, 0) / (h * w); }
+	else {
+		for (let i = 0; i < sh; i ++) {
+			// Vertical range in source pixels
+			const ys = i * scaley;
+			const ye = (i + 1) * scaley;
+
+			for (let j = 0; j < sw; j ++) {
+				// Horizontal range in source pixels
+				const sx = j * scalex;
+				const xe = (j + 1) * scalex;
+
+				let sum = 0;
+
+				// Loop over overlapping source pixels
+				for (let y = Math.floor(ys); y < Math.ceil(ye); y ++) {
+					for (let x = Math.floor(sx); x < Math.ceil(xe); x ++) {
+						if (y < 0 || y >= h || x < 0 || x >= w) { continue; }
+
+						// Vertical overlap fraction
+						const y0 = Math.max(y, ys);
+						const y1 = Math.min(y + 1, ye);
+						const dy = y1 - y0;
+
+						// Horizontal overlap fraction
+						const x0 = Math.max(x, sx);
+						const x1 = Math.min(x + 1, xe);
+						const dx = x1 - x0;
+
+						sum += pixels[y][x] * dx * dy;
+					}
+				}
+
+				result[i][j] = sum / (scaley * scalex);
+			}
+		}
+	}
+	return result;
+}
+
+
+// Build charset maps
+function buildCharsetMap () {
+	for (let ci = 0; ci < chars.length; ci ++) {
+		const c = chars[ci];
+		c.map = subsample(
+			Array.from({ length: h }, (_, y) =>
+				Array.from({ length: w }, (_, x) => {
+					return 255 - c.data.data[(y * w + x) * 4 + 3];
+				})
+			)
+		);
+	}
+}
+
+
+// Build the image subsamples
+function buildImageSubsamples() {
+	subsampled = Array.from({length: ch}, () => Array.from({length: cw}, () => null));
+	for (let i = 0; i < ch; i ++) {
+		for (let j = 0; j < cw; j ++) {
+			subsampled[i][j] = subsample(
+				Array.from({ length: h }, (_, bi) =>
+					Array.from({ length: w }, (_, bj) => {
+						return processed.data[((i * h + bi) * iw + (j * w + bj)) * 4];
+					})
+				)
+			);
+		}
+	}
+}
+
 
 // Draw each character bitmap
 function preprocessCharset() {
 	// For each character in charset
 	for (let ci = 0; ci < chars.length; ci ++) {
+		const c = chars[ci];
+		
 		// Draw character
-		const _c = chars[ci].c;
-		charctx.fillText(_c, 0, 0);
-		const _data = charctx.getImageData(0, 0, w, h);
+		charctx.fillText(c.c, 0, 0);
+		c.data = charctx.getImageData(0, 0, w, h);
 		charctx.clearRect(0, 0, w, h);
 		
-		// Analyze character
-		const _map = Array.from({length: h}, () => Array.from({length: w}, () => 0));
+		// Process character
 		for (let i = 0; i < h; i ++) {
 			for (let j = 0; j < w; j ++) {
 				const pxpos = (i*w + j) * 4;
-				let intensity = _data.data[pxpos + 3];
+				let intensity = c.data.data[pxpos + 3];
 				intensity = cont_charset === 0 ? (intensity < 127.5 ? 0 : 255) : ((intensity - 127.5) / cont_charset + 127.5);
 				intensity = parseInt(clamp(intensity, 0, 255));
-				//_map[i][j] = intensity;
-				_map[i][j] = 255 - intensity;
-				_data.data[pxpos + 3] = intensity;
+				c.data.data[pxpos + 3] = intensity;
 			}
 		}
-		chars[ci] = { c: _c, map: _map, data: _data };
 	}
+	
+	buildCharsetMap();
 }
 
 
@@ -144,6 +232,8 @@ function preprocessImage() {
 			processed.data[pxpos] = processed.data[pxpos + 1] = processed.data[pxpos + 2] = grey;
 		}
 	}
+	
+	buildImageSubsamples();
 }
 
 
@@ -151,18 +241,14 @@ function preprocessImage() {
 function process() {
 	for (let i = 0; i < ch; i ++) {
 		for (let j = 0; j < cw; j ++) {
-			const reli = i * h;
-			const relj = j * w;
 			const scores = chars.map(c => 0);
 			
-			// Process each pixel in block
-			for (let bi = 0; bi < h; bi ++) {
-				for (let bj = 0; bj < w; bj ++) {
-					const grey = processed.data[((reli + bi) * iw + (relj + bj)) * 4];
-					
-					// Compute differences
+			// Compute differences for each subsample
+			for (let bi = 0; bi < sh; bi ++) {
+				for (let bj = 0; bj < sw; bj ++) {
+					const sub = subsampled[i][j][bi][bj];
 					chars.forEach((c, ci) => {
-						scores[ci] += Math.abs(c.map[bi][bj] - grey);
+						scores[ci] += Math.abs(c.map[bi][bj] - sub);
 					});
 				}
 			}
@@ -264,8 +350,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	bindSlider('ContrastCharset', 'ContrastCharsetVal', setContCharset);
 	bindSlider('ContrastImg', 'ContrastImgVal', setContImg);
-	bindSlider('OpacityCharset', 'OpacityCharsetVal', (v) => { opacity_charset = parseFloat(v); draw(); });
-	bindSlider('OpacityImg', 'OpacityImgVal', (v) => { opacity_img = parseFloat(v); draw(); });
+	bindSlider('OpacityCharset', 'OpacityCharsetVal', (v) => { opacity_charset = clamp(parseFloat(v), 0, 1); draw(); });
+	bindSlider('OpacityImg', 'OpacityImgVal', (v) => { opacity_img = clamp(parseFloat(v), 0, 1); draw(); });
+	bindSlider('Lod', 'LodVal', setLoD);
 	
 	// Display Checkboxes
 	document.getElementById('SwitchTextOutput').addEventListener('change', e => { switch_text_output = e.target.checked; draw(); });
@@ -293,6 +380,7 @@ document.addEventListener('DOMContentLoaded', () => {
 setFont('monospace', 10, false);
 setCharset('', false);
 setResultSizes(40, 60, false);
+setLoD(1, false);
 cont_img = 1; cont_charset = 1;
 opacity_img = 1; opacity_charset = 1;
 switch_text_output = true; switch_processed_img = true;
